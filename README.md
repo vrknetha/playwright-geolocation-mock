@@ -8,8 +8,10 @@ A comprehensive geolocation mocking utility for Playwright testing. This package
 - Simulate movement along routes
 - Mock geolocation errors
 - Control geolocation permissions
-- Predefined common locations
+- 35+ predefined locations across continents and landmarks
 - TypeScript support
+- Cross-browser support (Chrome, Firefox, Safari)
+- Mobile browser support
 
 ## Installation
 
@@ -28,13 +30,16 @@ import { GeoMocker, PREDEFINED_LOCATIONS } from 'playwright-geolocation-mock';
 test('mock user location', async ({ context, page }) => {
   const geo = new GeoMocker(context);
   
-  // Use predefined location
-  await geo.mockLocation(PREDEFINED_LOCATIONS.LONDON);
+  // Use predefined locations
+  await geo.mockLocation(PREDEFINED_LOCATIONS.LONDON);          // Cities
+  await geo.mockLocation(PREDEFINED_LOCATIONS.EIFFEL_TOWER);    // Landmarks
+  await geo.mockLocation(PREDEFINED_LOCATIONS.SILICON_VALLEY);  // Tech Hubs
   
   // Or specify custom location
   await geo.mockLocation({
     latitude: 51.5074,
-    longitude: -0.1278
+    longitude: -0.1278,
+    accuracy: 10 // optional, in meters
   });
 });
 ```
@@ -45,14 +50,28 @@ test('mock user location', async ({ context, page }) => {
 test('simulate movement', async ({ context, page }) => {
   const geo = new GeoMocker(context);
   
-  // Simulate movement between locations
+  // Simulate a European tour
   await geo.mockRoute([
     PREDEFINED_LOCATIONS.LONDON,
-    PREDEFINED_LOCATIONS.PARIS
+    PREDEFINED_LOCATIONS.PARIS,
+    PREDEFINED_LOCATIONS.BERLIN,
+    PREDEFINED_LOCATIONS.ROME,
+    PREDEFINED_LOCATIONS.MADRID
   ], {
-    interval: 1000, // Update every second
-    loop: true      // Loop the route
+    interval: 3000, // Update every 3 seconds
+    loop: false     // Stop at the last position
   });
+
+  // Or simulate a world tech hub tour
+  await geo.mockRoute([
+    PREDEFINED_LOCATIONS.SILICON_VALLEY,
+    PREDEFINED_LOCATIONS.BANGALORE,
+    PREDEFINED_LOCATIONS.SHENZHEN,
+    PREDEFINED_LOCATIONS.TEL_AVIV
+  ]);
+
+  // Stop route simulation if needed
+  geo.stopRoute();
 });
 ```
 
@@ -63,7 +82,12 @@ test('handle location errors', async ({ context, page }) => {
   const geo = new GeoMocker(context);
   
   // Simulate permission denied error
-  await geo.mockError(1); // PERMISSION_DENIED
+  await geo.mockError(1); // PERMISSION_DENIED = 1
+  
+  // Error codes:
+  // 1 = PERMISSION_DENIED
+  // 2 = POSITION_UNAVAILABLE
+  // 3 = TIMEOUT
 });
 ```
 
@@ -76,8 +100,43 @@ test('manage permissions', async ({ context, page }) => {
   // Grant geolocation permission
   await geo.mockPermission('granted');
   
-  // Or deny it
+  // Deny permission
   await geo.mockPermission('denied');
+  
+  // Note: When permission is granted, the last mocked location will be restored
+});
+```
+
+### High Accuracy Mode
+
+```typescript
+test('use high accuracy mode', async ({ context, page }) => {
+  const geo = new GeoMocker(context);
+  
+  await geo.mockLocation(PREDEFINED_LOCATIONS.LONDON, {
+    enableHighAccuracy: true // Reduces accuracy value by half
+  });
+});
+```
+
+## Testing Setup
+
+### Test Fixtures
+
+```typescript
+import { test as base } from '@playwright/test';
+import { GeoMocker } from 'playwright-geolocation-mock';
+
+type TestFixtures = {
+  geoMocker: GeoMocker;
+};
+
+const test = base.extend<TestFixtures>({
+  geoMocker: async ({ context }, use) => {
+    const geoMocker = new GeoMocker(context);
+    await use(geoMocker);
+    geoMocker.dispose();
+  },
 });
 ```
 
@@ -92,23 +151,23 @@ constructor(context: BrowserContext)
 
 #### Methods
 
-##### `mockLocation(position: GeoPosition, options?: GeoMockOptions)`
+##### `mockLocation(position: GeoPosition, options?: GeoMockOptions): Promise<void>`
 Mock a single location with optional configuration.
 
-##### `mockRoute(positions: GeoPosition[], options?: RouteOptions)`
+##### `mockRoute(positions: GeoPosition[], options?: RouteOptions): Promise<void>`
 Simulate movement between multiple locations.
 
-##### `mockError(code: GeoLocationErrorCode)`
+##### `mockError(code: GeoLocationErrorCode): Promise<void>`
 Simulate a geolocation error.
 
-##### `mockPermission(permission: GeolocationPermission)`
+##### `mockPermission(permission: GeolocationPermission): Promise<void>`
 Control geolocation permissions.
 
-##### `stopRoute()`
+##### `stopRoute(): void`
 Stop an ongoing route simulation.
 
-##### `dispose()`
-Clean up resources.
+##### `dispose(): void`
+Clean up resources (automatically stops any active route).
 
 ### Types
 
@@ -124,16 +183,26 @@ interface GeoPosition {
 }
 
 interface GeoMockOptions {
-  timeout?: number;
-  maximumAge?: number;
   enableHighAccuracy?: boolean;
 }
 
 interface RouteOptions {
-  interval?: number;
-  loop?: boolean;
+  interval?: number;  // Default: 1000ms
+  loop?: boolean;     // Default: false
 }
+
+type GeolocationPermission = 'granted' | 'denied';
+
+type GeoLocationErrorCode = 1 | 2 | 3;  // PERMISSION_DENIED | POSITION_UNAVAILABLE | TIMEOUT
 ```
+
+## Browser Support
+
+- Chromium (Desktop & Mobile)
+- Firefox (Desktop)
+- WebKit/Safari (Desktop & Mobile)
+
+Note: Some features like high accuracy mode and error handling may behave differently across browsers.
 
 ## Contributing
 

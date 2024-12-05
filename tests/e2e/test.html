@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Geolocation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { margin: 10px 0; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Geolocation Test</h1>
+    
+    <div class="info">
+        <h2>Current Position</h2>
+        <div>Latitude: <span id="latitude">Waiting...</span></div>
+        <div>Longitude: <span id="longitude">Waiting...</span></div>
+        <div>Accuracy: <span id="accuracy">Waiting...</span></div>
+        <div>Altitude: <span id="altitude">Waiting...</span></div>
+        <div>Altitude Accuracy: <span id="altitudeAccuracy">Waiting...</span></div>
+        <div>Heading: <span id="heading">Waiting...</span></div>
+        <div>Speed: <span id="speed">Waiting...</span></div>
+    </div>
+
+    <div class="info">
+        <h2>Watch Position</h2>
+        <div>Updates: <span id="updates">0</span></div>
+        <div>Last Position: <span id="watchPosition">Waiting...</span></div>
+    </div>
+
+    <div class="info">
+        <h2>High Accuracy</h2>
+        <div>Position: <span id="highAccuracy">Waiting...</span></div>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <script>
+        let updateCount = 0;
+
+        function updateElement(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        function updatePosition(position) {
+            const coords = position.coords;
+            updateElement('latitude', coords.latitude);
+            updateElement('longitude', coords.longitude);
+            updateElement('accuracy', coords.accuracy ? `${coords.accuracy}m` : 'N/A');
+            updateElement('altitude', coords.altitude ? `${coords.altitude}m` : 'N/A');
+            updateElement('altitudeAccuracy', coords.altitudeAccuracy ? `${coords.altitudeAccuracy}m` : 'N/A');
+            updateElement('heading', coords.heading ? `${coords.heading}°` : 'N/A');
+            updateElement('speed', coords.speed ? `${coords.speed}m/s` : 'N/A');
+        }
+
+        function handleError(error) {
+            updateElement('error', `Error: ${error.code} - ${error.message}`);
+        }
+
+        // Get current position
+        navigator.geolocation.getCurrentPosition(updatePosition, handleError);
+
+        // Watch position
+        navigator.geolocation.watchPosition((position) => {
+            updateCount++;
+            updateElement('updates', updateCount);
+            updateElement('watchPosition', `${position.coords.latitude}, ${position.coords.longitude}`);
+        }, handleError);
+
+        // High accuracy
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                updateElement('highAccuracy', `${position.coords.latitude}, ${position.coords.longitude} (±${position.coords.accuracy}m)`);
+            },
+            handleError,
+            { enableHighAccuracy: true }
+        );
+    </script>
+</body>
+</html> 

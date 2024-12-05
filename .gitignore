@@ -11,6 +11,8 @@ build/
 
 # Test coverage
 coverage/
+playwright-report/
+test-results/
 
 # IDE and editor files
 .idea/

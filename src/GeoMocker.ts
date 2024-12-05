@@ -1,8 +1,28 @@
 import { BrowserContext } from '@playwright/test';
 import { GeoPosition, GeoMockOptions, RouteOptions, GeolocationPermission, GeoLocationErrorCode } from './types';
-import { DEFAULT_OPTIONS, DEFAULT_ACCURACY, ERROR_CODES } from './constants';
+import { DEFAULT_OPTIONS, DEFAULT_ACCURACY } from './constants';
 import { validatePosition, validateOptions, validateRouteOptions } from './utils/validators';
-import { interpolatePosition } from './utils/calculations';
+
+declare global {
+  interface Window {
+    _geoWatchCallbacks?: Map<number, (position: GeolocationPositionType) => void>;
+  }
+}
+
+interface GeolocationPositionType {
+  coords: GeolocationCoordinates;
+  timestamp: number;
+}
+
+interface GeolocationCoordinates {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  altitude: number | null;
+  altitudeAccuracy: number | null;
+  heading: number | null;
+  speed: number | null;
+}
 
 export class GeoMocker {
   private context: BrowserContext;
@@ -29,6 +49,12 @@ export class GeoMocker {
       ...position
     };
 
+    await this.context.setGeolocation({
+      latitude: position.latitude,
+      longitude: position.longitude,
+      accuracy: position.accuracy
+    });
+
     await this.updateGeolocationOverride();
   }
 
@@ -49,7 +75,7 @@ export class GeoMocker {
   }
 
   async mockError(code: GeoLocationErrorCode): Promise<void> {
-    await this.context.addInitScript(`
+    const script = `
       window.navigator.geolocation = {
         getCurrentPosition: (success, error) => {
           error({ code: ${code}, message: 'Mocked geolocation error' });
@@ -60,45 +86,90 @@ export class GeoMocker {
         },
         clearWatch: () => {}
       };
-    `);
+    `;
+
+    await this.context.addInitScript(script);
+    
+    const pages = this.context.pages();
+    await Promise.all(pages.map(page => page.evaluate(script)));
   }
 
-  async mockPermission(permission: GeolocationPermission): Promise<void> {
-    await this.context.grantPermissions(['geolocation'], {
-      origin: permission === 'denied' ? undefined : '*'
-    });
+  async mockPermission(permissionState: GeolocationPermission): Promise<void> {
+    if (permissionState === 'denied') {
+      await this.context.clearPermissions();
+    } else {
+      await this.context.grantPermissions(['geolocation']);
+    }
+
+    if (this.currentPosition && permissionState === 'granted') {
+      await this.mockLocation(this.currentPosition);
+    }
   }
 
   private async updateGeolocationOverride(): Promise<void> {
     if (!this.currentPosition) return;
 
-    await this.context.addInitScript(`
+    const geolocationPosition: GeolocationPositionType = {
+      coords: {
+        latitude: this.currentPosition.latitude,
+        longitude: this.currentPosition.longitude,
+        accuracy: this.currentPosition.accuracy || DEFAULT_ACCURACY,
+        altitude: this.currentPosition.altitude || null,
+        altitudeAccuracy: this.currentPosition.altitudeAccuracy || null,
+        heading: this.currentPosition.heading || null,
+        speed: this.currentPosition.speed || null
+      },
+      timestamp: Date.now()
+    };
+
+    const script = `
+      if (!window._geoWatchCallbacks) {
+        window._geoWatchCallbacks = new Map();
+      }
+
+      const mockPosition = ${JSON.stringify(geolocationPosition)};
+      
       window.navigator.geolocation = {
-        getCurrentPosition: (success) => {
-          success(${JSON.stringify(this.currentPosition)});
+        getCurrentPosition: (success, error, options) => {
+          setTimeout(() => {
+            success(mockPosition);
+          }, 0);
         },
-        watchPosition: (success) => {
+        watchPosition: (success, error, options) => {
           const watchId = ${++this.watchId};
-          success(${JSON.stringify(this.currentPosition)});
-          window._geoWatchCallbacks = window._geoWatchCallbacks || new Map();
+          setTimeout(() => {
+            success(mockPosition);
+          }, 0);
           window._geoWatchCallbacks.set(watchId, success);
           return watchId;
         },
         clearWatch: (watchId) => {
-          if (window._geoWatchCallbacks) {
-            window._geoWatchCallbacks.delete(watchId);
-          }
+          window._geoWatchCallbacks.delete(watchId);
         }
       };
-    `);
 
-    await this.context.evaluate((position) => {
+      // Notify existing watchers
       if (window._geoWatchCallbacks) {
         for (const callback of window._geoWatchCallbacks.values()) {
-          callback(position);
+          setTimeout(() => {
+            callback(mockPosition);
+          }, 0);
         }
       }
-    }, this.currentPosition);
+    `;
+
+    // First add it as an init script for future page loads
+    await this.context.addInitScript(script);
+
+    // Then execute it immediately on all current pages
+    const pages = this.context.pages();
+    await Promise.all(pages.map(async (page) => {
+      try {
+        await page.evaluate(script);
+      } catch (e) {
+        // Ignore evaluation errors on pages that might be closed or not ready
+      }
+    }));
   }
 
   private async updateRoutePosition(loop: boolean): Promise<void> {
