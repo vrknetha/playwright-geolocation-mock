@@ -60,6 +60,6 @@
   },
   "homepage": "https://github.com/vrknetha/playwright-geolocation-mock#readme",
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   }
 }
