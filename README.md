@@ -211,3 +211,40 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 MIT 
+
+## Releases
+
+Release Title Format: `v{major}.{minor}.{patch}`
+Example: `v1.0.0`
+
+Release Description Template:
+```markdown
+## What's Changed
+- Brief summary of major changes
+- New features added
+- Bug fixes
+- Breaking changes (if any)
+
+## New Features
+- Detailed description of new feature 1
+- Detailed description of new feature 2
+
+## Bug Fixes
+- Fixed issue with X
+- Resolved problem with Y
+
+## Breaking Changes
+- List any breaking changes
+- Migration steps if needed
+
+## Dependencies
+- Updated dependencies
+- New dependencies added
+
+## Documentation
+- Documentation updates
+- New examples added
+
+## Contributors
+@username - Feature/Fix description
+``` 
