@@ -27,19 +27,10 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
         
-      - name: Run linter
-        run: npm run lint
-        
-      - name: Run type check
-        run: npm run type-check
-        
-      - name: Run tests
-        run: npm run test
+      - name: Run CI checks
+        run: npm run ci
         env:
           CI: true
-        
-      - name: Build package
-        run: npm run build
         
       - name: Upload test results
         if: always()
