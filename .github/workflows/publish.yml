@@ -20,7 +20,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install production dependencies
-        run: npm ci --production
+        run: npm ci
 
       - name: Publish to NPM
         run: npm publish

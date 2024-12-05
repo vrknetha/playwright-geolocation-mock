@@ -14,8 +14,7 @@
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
     "type-check": "tsc --noEmit",
-    "clean": "rimraf dist playwright-report test-results",
-    "prepare": "npm run clean && npm run build",
+    "prepare": "npm run build",
     "prepublishOnly": "npm run lint && npm test",
     "preversion": "npm run lint",
     "version": "git add -A src",
@@ -43,7 +42,6 @@
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
     "http-server": "^14.1.1",
-    "rimraf": "^5.0.10",
     "typescript": "^5.0.0"
   },
   "files": [
